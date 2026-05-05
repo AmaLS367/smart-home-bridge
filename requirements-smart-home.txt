@@ -1,4 +1,0 @@
-pychromecast
-bleak
-yt-dlp
-mcp

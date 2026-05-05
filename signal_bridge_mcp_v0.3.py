@@ -66,9 +66,9 @@ def check_dependencies():
 
 check_dependencies()
 
-from mcp.server.fastmcp import FastMCP
-from buttplug import ButtplugClient, DeviceOutputCommand, OutputType
-from dotenv import load_dotenv
+from mcp.server.fastmcp import FastMCP  # noqa: E402
+from buttplug import ButtplugClient, DeviceOutputCommand, OutputType  # noqa: E402
+from dotenv import load_dotenv  # noqa: E402
 
 load_dotenv()
 
@@ -105,7 +105,7 @@ def load_device_registry() -> list[DeviceProfile]:
 
     if not json_path.exists():
         print(f"No devices.json found at {json_path}. Using empty registry.", file=sys.stderr)
-        print(f"Unknown devices will still work with basic controls.", file=sys.stderr)
+        print("Unknown devices will still work with basic controls.", file=sys.stderr)
         return []
 
     try:
@@ -646,7 +646,7 @@ def _resolve_targets(device: str, required_output: Optional[str] = None) -> tupl
         targets = [cd]
 
     if not targets:
-        msg = f"No devices available"
+        msg = "No devices available"
         if required_output:
             msg += f" with {required_output} capability"
         return [], msg + "."

@@ -3,6 +3,7 @@ import asyncio
 from typing import List, Dict, Optional
 
 from bleak import BleakScanner
+from bleak.backends.device import BLEDevice
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +15,7 @@ WITHINGS_NAME_PREFIX = "Withings"
 # Service UUIDs for Mi Scale
 MI_SCALE_SERVICE = "0000181d-0000-1000-8000-00805f9b34fb"
 
-def _is_scale(device) -> bool:
+def _is_scale(device: BLEDevice) -> bool:
     name = device.name or ""
     if name in [MI_SCALE_V1_NAME, MI_SCALE_V2_NAME]:
         return True
@@ -22,7 +23,8 @@ def _is_scale(device) -> bool:
         return True
     
     # Check advertised services if available
-    metadata_uuids = device.metadata.get("uuids", [])
+    metadata = getattr(device, "metadata", {})
+    metadata_uuids = metadata.get("uuids", [])
     if MI_SCALE_SERVICE in metadata_uuids:
         return True
         
@@ -37,7 +39,7 @@ async def _scan_async() -> List[Dict[str, str]]:
             scales.append({
                 "address": d.address,
                 "name": d.name or "Unknown Scale",
-                "rssi": d.rssi
+                "rssi": str(getattr(d, "rssi", 0))
             })
     return scales
 

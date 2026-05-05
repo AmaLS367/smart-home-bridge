@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "signal-bridge"
+version = "0.4.0"
+description = "Signal Bridge & Smart Home Bridge for Claude Desktop"
+authors = [
+    { name = "AletheiaVox", email = "voxaletheia@gmail.com" },
+    { name = "Ama", email = "amalsdev367@gmail.com" }
+]
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "mcp>=0.1.0",
+    "buttplug>=0.2.0",
+    "python-dotenv>=1.0.0",
+    "pychromecast>=14.0.0",
+    "bleak>=0.21.0",
+    "yt-dlp>=2023.0.0"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+    "types-requests"
+]
