@@ -18,7 +18,8 @@ dependencies = [
     "python-dotenv>=1.0.0",
     "pychromecast>=14.0.0",
     "bleak>=0.21.0",
-    "yt-dlp>=2023.0.0"
+    "yt-dlp>=2023.0.0",
+    "adb-shell>=0.3.0"
 ]
 
 [project.optional-dependencies]

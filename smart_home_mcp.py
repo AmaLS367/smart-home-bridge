@@ -1,15 +1,19 @@
 """
 FastMCP server for Smart Home Integration.
 """
+import sys
 import asyncio
 from functools import partial
 from typing import Optional
 from mcp.server.fastmcp import FastMCP
 from smart_home import chromecast
 from smart_home import ble_scales
+from smart_home import android_tv
 
 # Initialize FastMCP server
 mcp = FastMCP("Smart Home Bridge")
+
+print("Smart Home Bridge starting...", file=sys.stderr)
 
 @mcp.tool()
 async def cast_list_devices() -> str:
@@ -93,6 +97,54 @@ async def scales_read_weight(address: Optional[str] = None) -> str:
         if result == -1.0:
             return "Could not read weight. Make sure you are standing on the scale and it is in range."
         return f"Weight: {result} kg"
+    except Exception as e:
+        return f"Error: {e}"
+
+@mcp.tool()
+async def tv_connect() -> str:
+    """Connect to Android TV over Wi-Fi."""
+    try:
+        return await asyncio.get_event_loop().run_in_executor(None, android_tv.connect)
+    except Exception as e:
+        return f"Error: {e}"
+
+@mcp.tool()
+async def tv_key(keycode: str) -> str:
+    """Send a keycode to the TV (e.g., KEYCODE_HOME, KEYCODE_BACK, KEYCODE_DPAD_UP)."""
+    try:
+        return await asyncio.get_event_loop().run_in_executor(None, partial(android_tv.send_key, keycode))
+    except Exception as e:
+        return f"Error: {e}"
+
+@mcp.tool()
+async def tv_open_app(package_name: str) -> str:
+    """Open an app by package name (e.g., com.google.android.youtube.tv)."""
+    try:
+        return await asyncio.get_event_loop().run_in_executor(None, partial(android_tv.open_app, package_name))
+    except Exception as e:
+        return f"Error: {e}"
+
+@mcp.tool()
+async def tv_play_youtube(query: str) -> str:
+    """Search and play a video on YouTube on the TV."""
+    try:
+        return await asyncio.get_event_loop().run_in_executor(None, partial(android_tv.play_youtube, query))
+    except Exception as e:
+        return f"Error: {e}"
+
+@mcp.tool()
+async def tv_get_current_app() -> str:
+    """Get the currently focused app's package name."""
+    try:
+        return await asyncio.get_event_loop().run_in_executor(None, android_tv.get_current_app)
+    except Exception as e:
+        return f"Error: {e}"
+
+@mcp.tool()
+async def tv_volume_set(level: int) -> str:
+    """Set TV volume level (0-15)."""
+    try:
+        return await asyncio.get_event_loop().run_in_executor(None, partial(android_tv.volume_set, level))
     except Exception as e:
         return f"Error: {e}"
 
