@@ -15,39 +15,47 @@ WITHINGS_NAME_PREFIX = "Withings"
 # Service UUIDs for Mi Scale
 MI_SCALE_SERVICE = "0000181d-0000-1000-8000-00805f9b34fb"
 
-def _is_scale(device: BLEDevice) -> bool:
+def _is_scale(device: BLEDevice, advertisement_data) -> bool:
     name = device.name or ""
     if name in [MI_SCALE_V1_NAME, MI_SCALE_V2_NAME]:
         return True
     if name.startswith(WITHINGS_NAME_PREFIX):
         return True
     
+    # Chipsea scale detection
+    for company_id, data in advertisement_data.manufacturer_data.items():
+        if len(data) >= 2 and data[0] == 0x02 and data[1] == 0xF8:
+            return True
+
     # Check advertised services if available
-    metadata = getattr(device, "metadata", {})
-    metadata_uuids = metadata.get("uuids", [])
+    metadata_uuids = advertisement_data.service_uuids
     if MI_SCALE_SERVICE in metadata_uuids:
         return True
         
     return False
 
-async def _scan_async() -> List[Dict[str, str]]:
+async def scan() -> List[Dict[str, str]]:
+    """Find BLE scales in range."""
     logger.info("Scanning for BLE scales...")
-    devices = await BleakScanner.discover(timeout=5.0)
-    scales = []
-    for d in devices:
-        if _is_scale(d):
-            scales.append({
-                "address": d.address,
-                "name": d.name or "Unknown Scale",
-                "rssi": str(getattr(d, "rssi", 0))
-            })
+    scales: List[Dict[str, str]] = []
+    
+    def detection_callback(device, advertisement_data):
+        if _is_scale(device, advertisement_data):
+            # Avoid duplicates
+            if not any(s["address"] == device.address for s in scales):
+                scales.append({
+                    "address": device.address,
+                    "name": device.name or "Unknown Scale",
+                    "rssi": str(getattr(device, "rssi", 0))
+                })
+
+    scanner = BleakScanner(detection_callback)
+    await scanner.start()
+    await asyncio.sleep(5.0)
+    await scanner.stop()
     return scales
 
-def scan() -> List[Dict[str, str]]:
-    """Find BLE scales in range."""
-    return asyncio.run(_scan_async())
-
-async def _read_weight_async(address: Optional[str]) -> float:
+async def read_weight(address: Optional[str] = None, timeout: int = 30) -> float:
     """Read weight by listening to BLE advertisements."""
     logger.info(f"Scanning to read weight from {address or 'any scale'}...")
     
@@ -58,28 +66,35 @@ async def _read_weight_async(address: Optional[str]) -> float:
         if address and device.address.lower() != address.lower():
             return
             
-        if not _is_scale(device):
+        if not _is_scale(device, advertisement_data):
             return
             
-        # Parse Xiaomi Mi Scale V2 (Miscale 2) advertisement data
-        # Service Data UUID usually 0000181b-0000-1000-8000-00805f9b34fb
+        # Chipsea scale weight parsing
+        for company_id, data in advertisement_data.manufacturer_data.items():
+            if len(data) >= 13 and data[0] == 0x02 and data[1] == 0xF8:
+                raw = (data[11] << 8) | data[12]
+                weight_kg = raw / 100.0
+                if weight_kg > 5.0:
+                    weight = weight_kg
+                    return
+
+        # Fallback to Mi Scale service data if present
         service_data = advertisement_data.service_data
         for uuid, data in service_data.items():
             if uuid.startswith("0000181b") or uuid.startswith("0000181d"):
-                # simplified parse for Mi Scale
                 if len(data) >= 13:
                     # Weight is usually in bytes 11 and 12 for V2
                     raw_weight = int.from_bytes(data[11:13], byteorder='little')
-                    # Scale unit check (byte 0)
-                    # Simplified parsing for demonstration
                     weight_kg = raw_weight * 0.005 
-                    weight = weight_kg
+                    if weight_kg > 5.0:
+                        weight = weight_kg
+                        return
 
     scanner = BleakScanner(detection_callback)
     await scanner.start()
     
     # Wait for scale to broadcast (e.g. someone steps on it)
-    for _ in range(10): # up to 10 seconds
+    for _ in range(timeout):
         await asyncio.sleep(1.0)
         if weight is not None:
             break
@@ -89,8 +104,4 @@ async def _read_weight_async(address: Optional[str]) -> float:
     if weight is not None:
         return round(weight, 2)
         
-    raise TimeoutError("Could not read weight data. Make sure to step on the scale.")
-
-def read_weight(address: Optional[str] = None) -> float:
-    """Connect/listen and read weight from the scale."""
-    return asyncio.run(_read_weight_async(address))
+    return -1.0

@@ -9,17 +9,17 @@ logger = logging.getLogger(__name__)
 
 # Global state to keep track of discovered casts
 _chromecasts: Dict[str, pychromecast.Chromecast] = {}
-_browser = None
 
 def discover() -> List[str]:
     """Find all Chromecasts on the local network."""
-    global _chromecasts, _browser
+    global _chromecasts
     
     logger.info("Discovering Chromecasts...")
     chromecasts, browser = pychromecast.get_listed_chromecasts(friendly_names=None)
-    _browser = browser
     
     _chromecasts = {cast.name: cast for cast in chromecasts if cast.name is not None}
+    pychromecast.stop_discovery(browser)
+    
     return list(_chromecasts.keys())
 
 def _get_cast(device_name: Optional[str] = None) -> pychromecast.Chromecast:
